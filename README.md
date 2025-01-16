@@ -1,1 +1,1 @@
-Run Command : streamlit run app.py
+Tech Stack : ReactJS and Flask , GeminiAI 
