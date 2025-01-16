@@ -1,0 +1,23 @@
+/* static/style.css */
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #f0f0f0;
+}
+
+.container {
+    position: relative;
+}
+
+#video {
+    width: 100%;  /* Make video responsive */
+    height: auto; /* Maintain aspect ratio */
+}
+
+#canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border: 1px solid #000;
+}

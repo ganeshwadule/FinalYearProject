@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hand Gesture Drawing Board</title>
+  <style>
+    body {
+      margin: 30px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 90vh;
+      background-color: #f0f0f0;
+      flex-direction: column;
+    }
+
+    #canvas {
+      border: 2px solid black;
+      background-color: white;
+      cursor: pointer;
+    }
+
+    #videoElement {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 160px;
+      height: 120px;
+      border: 2px solid #666;
+      transform: scaleX(-1); /* Mirror the webcam feed for user comfort */
+    }
+  </style>
+</head>
+<body>
+    <h2>Virtual Whiteboard</h2>
+  <video id="videoElement" width="640" height="480" autoplay></video>
+  <canvas id="canvas" width="900" height="450"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const videoElement = document.getElementById('videoElement');
+
+    // Initialize canvas with white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Set up webcam
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then((stream) => {
+        videoElement.srcObject = stream;
+      })
+      .catch((err) => {
+        console.error("Error accessing webcam:", err);
+      });
+
+    // Capture frames and send them to the backend
+    setInterval(async () => {
+      if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+        const frame = captureFrame();
+        if (frame) {
+          sendToBackend(frame);
+        }
+      }
+    }, 100);
+
+    // Capture a frame from the video
+    function captureFrame() {
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      // Set canvas size to match video dimensions
+      tempCanvas.width = videoElement.videoWidth;
+      tempCanvas.height = videoElement.videoHeight;
+      
+      // First, draw the video frame normally
+      tempCtx.drawImage(videoElement, 0, 0);
+      
+      // Create a flipped canvas
+      const flippedCanvas = document.createElement('canvas');
+      const flippedCtx = flippedCanvas.getContext('2d');
+      flippedCanvas.width = tempCanvas.width;
+      flippedCanvas.height = tempCanvas.height;
+      
+      // Flip the image horizontally
+      flippedCtx.translate(flippedCanvas.width, 0);
+      flippedCtx.scale(-1, 1);
+      flippedCtx.drawImage(tempCanvas, 0, 0);
+      
+      return flippedCanvas.toDataURL('image/jpeg', 0.8);
+    }
+
+    // Send captured frame to the backend for processing
+    async function sendToBackend(frameData) {
+      const formData = new FormData();
+      formData.append('frame', frameData);
+
+      try {
+        const response = await fetch('http://127.0.0.1:5000/process_frame', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+        if (data && data.drawing) {
+          const image = new Image();
+          image.onload = () => {
+            ctx.drawImage(image, 0, 0);
+          };
+          image.src = data.drawing;
+        }
+      } catch (error) {
+        console.error('Error sending frame to backend:', error);
+      }
+    }
+  </script>
+</body>
+</html>
